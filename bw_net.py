@@ -26,15 +26,15 @@ class FeatureExtractor(nn.Module):
     def forward(self, x):
         # x shape: (batch_size, in_channels, H, W)
         x = self.embedding(x)  # Convert to tokens
-        print(x.shape)
+        # print(x.shape)
         if self.cls_token is not None:
             batch_size = x.size(0)
             cls_tokens = self.cls_token.expand(batch_size, -1, -1)  # (batch_size, 1, embed_dim)
             x = torch.cat((cls_tokens, x), dim=1)  # Prepend cls_token
-        print(x.shape)
+        # print(x.shape)
         x = x + self.positional_encoding[:, :x.size(1), :]  # Add positional encoding
         x = self.transformer_encoder(x)  # Apply self-attention
-        print(x.shape)
+        # print(x.shape)
         cls_feature = x[:, 0, :]  # Extract cls token feature
         token_features = x[:, 1:, :]  # Extract other token features
         
@@ -57,8 +57,8 @@ class SelfAttentionWithThreeTokens(nn.Module):
         combined_cls_tokens = torch.cat([new_cls_token_expanded, 
                                          example_input_cls.unsqueeze(1), 
                                          example_output_cls.unsqueeze(1)], dim=1)
-        print("c")
-        print(combined_cls_tokens.shape)
+        # print("c")
+        # print(combined_cls_tokens.shape)
         # Apply self-attention
         combined_cls_tokens = combined_cls_tokens.permute(1, 0, 2)  # (seq_len, batch_size, embed_dim)
         attn_output, _ = self.multihead_attn(combined_cls_tokens, combined_cls_tokens, combined_cls_tokens)
@@ -135,7 +135,7 @@ class Head(nn.Module):
         # Combine cls_combined with token_features_flat
         #combined_features = torch.cat((cls_combined, token_features_flat), dim=-1)
         combined_features = torch.cat((final_causal_proj, cls_combined), dim=-1)
-        print("combined_features",combined_features.shape)
+        # print("combined_features",combined_features.shape)
         x = self.fc3(combined_features)  # (batch_size, seq_len)
         # print("x",x.shape)
         # Reshape to (batch_size, 1, 30, 30)
