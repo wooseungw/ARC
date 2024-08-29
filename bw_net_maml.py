@@ -28,7 +28,7 @@ class SelfAttentionBlock(nn.Module):
     def __init__(self, embed_size=128):
         super(SelfAttentionBlock, self).__init__()
         self.cls_token = nn.Parameter(torch.randn(1, 1, 30*30*embed_size))
-        self.self_attn = nn.MultiheadAttention(embed_dim=30*30*embed_size, num_heads=8)
+        self.self_attn = nn.MultiheadAttention(embed_dim=30*30*embed_size, num_heads=4)
 
     def forward(self, x):
         batch_size = x.size(0)
