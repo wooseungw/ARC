@@ -12,9 +12,9 @@ class FEBlock(nn.Module):
         self.stages = nn.ModuleList([])
         for n in self.numbers:
             self.stages.append(nn.Sequential(
-                nn.Conv2d(1, n, kernel_size=n, padding=0),
+                nn.Conv2d(1, n*2, kernel_size=n, padding=0),
                 nn.Flatten(1),
-                nn.Linear((30-n+1)**2*n, 30*30*embed_size)
+                nn.Linear((30-n+1)**2*n*2, 30*30*embed_size)
             ))
 
     def forward(self, x):
