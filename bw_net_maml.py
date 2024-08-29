@@ -3,29 +3,29 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class FEBlock(nn.Module):
-    def __init__(self, embed_size=128):
+    def __init__(self, embed_size=1):
         super(FEBlock, self).__init__()
         # 1x1 ~ 30x30 Convolution layers 생성 (Padding X)
         # self.convs = nn.ModuleList([nn.Conv2d(1, embed_size, kernel_size=n, padding=0) for n in range(1, 31)])
         # self.fc = nn.ModuleList([nn.Linear((30-n)**(30-n)embed_size, 30*30*embed_size) for n in range(1, 31)])
-
+        self.numbers = [1, 2, 3, 5, 7, 9, 11, 13, 15, 25, 30]
         self.stages = nn.ModuleList([])
-        for n in range(1, 31):
+        for n in self.numbers:
             self.stages.append(nn.Sequential(
-                nn.Conv2d(1, n*2, kernel_size=n, padding=0),
+                nn.Conv2d(1, n, kernel_size=n, padding=0),
                 nn.Flatten(1),
-                nn.Linear((30-n+1)**2*n*2, 30*30*embed_size)
+                nn.Linear((30-n+1)**2*n, 30*30*embed_size)
             ))
 
     def forward(self, x):
         features = []
         for stage in self.stages:
             features.append(stage(x).unsqueeze(1))  # (batch, 1, 1, n*n*embed_size)
-        # print(features[-1].shape)
+            # print(features[-1].shape)
         return torch.stack(features, dim=1)  # (batch, 30, n*n*embed_size)
 
 class SelfAttentionBlock(nn.Module):
-    def __init__(self, embed_size=128):
+    def __init__(self, embed_size=1):
         super(SelfAttentionBlock, self).__init__()
         self.cls_token = nn.Parameter(torch.randn(1, 1, 30*30*embed_size))
         self.self_attn = nn.MultiheadAttention(embed_dim=30*30*embed_size, num_heads=4)
@@ -42,10 +42,10 @@ class SelfAttentionBlock(nn.Module):
         return x[:, 0].unsqueeze(1)  # (batch, 1, 30*30*embed_size)
 
 class HeadBlock(nn.Module):
-    def __init__(self, embed_size=128, num_classes=11):
+    def __init__(self, embed_size=1, num_classes=11):
         super(HeadBlock, self).__init__()
-        self.fc1 = nn.Linear(30*30*embed_size, 30*30*embed_size*embed_size)
-        self.fc2 = nn.Linear(30*30*embed_size*embed_size, 30*30*embed_size)
+        self.fc1 = nn.Linear(30*30*embed_size, 30*30*embed_size*2)
+        self.fc2 = nn.Linear(30*30*embed_size*2, 30*30*embed_size)
         self.fc3 = nn.Linear(30*30*embed_size, 30*30)
         self.conv = nn.Conv2d(1, num_classes, kernel_size=1)
         self.log_softmax = nn.LogSoftmax(dim=1)
@@ -60,7 +60,7 @@ class HeadBlock(nn.Module):
         return x
 
 class BWNet_MAML(nn.Module):
-    def __init__(self, embed_size=128):
+    def __init__(self, embed_size=1):
         super(BWNet_MAML, self).__init__()
         self.fe_block = FEBlock(embed_size=embed_size)
         self.self_attn_block = SelfAttentionBlock(embed_size=embed_size)
