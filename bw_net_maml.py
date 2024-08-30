@@ -12,9 +12,9 @@ class FEBlock(nn.Module):
         self.stages = nn.ModuleList([])
         for n in self.numbers:
             self.stages.append(nn.Sequential(
-                nn.Conv2d(1, n*2, kernel_size=n, padding=0),
+                nn.Conv2d(1, n, kernel_size=n, padding=0),
                 nn.Flatten(1),
-                nn.Linear((30-n+1)**2*n*2, 30*30*embed_size)
+                nn.Linear((30-n+1)**2*n, 30*30*embed_size)
             ))
 
     def forward(self, x):
@@ -42,7 +42,7 @@ class SelfAttentionBlock(nn.Module):
         return x[:, 0].unsqueeze(1)  # (batch, 1, 30*30*embed_size)
 
 class HeadBlock(nn.Module):
-    def __init__(self, embed_size=1, num_classes=11):
+    def __init__(self, embed_size=1, num_classes=101):
         super(HeadBlock, self).__init__()
         self.fc1 = nn.Linear(30*30*embed_size, 30*30*embed_size*2)
         self.fc2 = nn.Linear(30*30*embed_size*2, 30*30*embed_size)

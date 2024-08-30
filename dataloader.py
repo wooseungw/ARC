@@ -112,15 +112,16 @@ class ARC_Dataset(Dataset):
         task_size = len(task_input)
         for i in range(self.task_data_num):
             random_index = random.randint(0, task_size - 1)
-            task_input.append(self.mapping_input(task_input[random_index].clone()))
-            task_output.append(task_output[0].clone())
+            task_input.append(self.mapping_input(task_input[random_index]))
+            #task_output.append(task_output[0])
+            task_output.append(self.mapping_input(task_output[random_index]))
         
         size = len(example_input)
         for i in range(self.example_data_num):
             random_index = random.randint(0, size - 1)
             example_input.append(self.mapping_input(example_input[random_index]))
-            example_output.append(example_output[random_index])
-        
+            #example_output.append(example_output[random_index])
+            example_output.append(self.mapping_input(example_output[random_index]))
         
         task_input = task_input[task_size:]
         task_output = task_output[task_size:]
@@ -129,7 +130,7 @@ class ARC_Dataset(Dataset):
         
         example_input = example_input[size:]
         example_output = example_output[size:]
-        example_input = torch.stack(example_input,)
+        example_input = torch.stack(example_input)
         example_output = torch.stack(example_output)
         
         # 최종 출력 형태: [task_number, inner_batch_size, channel, height, width]
