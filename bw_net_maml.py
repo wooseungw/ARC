@@ -42,7 +42,7 @@ class SelfAttentionBlock(nn.Module):
         return x[:, 0].unsqueeze(1)  # (batch, 1, 30*30*embed_size)
 
 class HeadBlock(nn.Module):
-    def __init__(self, embed_size=1, num_classes=101):
+    def __init__(self, embed_size=1, num_classes=11):
         super(HeadBlock, self).__init__()
         self.fc1 = nn.Linear(30*30*embed_size, 30*30*embed_size*2)
         self.fc2 = nn.Linear(30*30*embed_size*2, 30*30*embed_size)
