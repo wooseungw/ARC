@@ -60,16 +60,16 @@ class ARC_Dataset(Dataset):
 
     def mapping_input(self, tensor):
         mapping = {
-            1: random.randint(1, 10),
-            2: random.randint(11, 20),
-            3: random.randint(21, 30),
-            4: random.randint(31, 40),
-            5: random.randint(41, 50),
-            6: random.randint(51, 60),
-            7: random.randint(61, 70),
-            8: random.randint(71, 80),
-            9: random.randint(81, 90),
-            10: random.randint(91, 100)
+            1: random.randint(1, 5),
+            2: random.randint(11, 15),
+            3: random.randint(21, 25),
+            4: random.randint(31, 35),
+            5: random.randint(41, 45),
+            6: random.randint(51, 55),
+            7: random.randint(61, 65),
+            8: random.randint(71, 75),
+            9: random.randint(81, 85),
+            10: random.randint(91, 95)
         }
         temp_tensor = tensor.clone()
         for k in mapping:

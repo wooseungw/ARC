@@ -24,6 +24,29 @@ class FEBlock(nn.Module):
             # print(features[-1].shape)
         return torch.stack(features, dim=1)  # (batch, 30, n*n*embed_size)
 
+# class FEBlock(nn.Module):
+#     def __init__(self, embed_size=1):
+#         super(FEBlock, self).__init__()
+#         # Use depthwise and pointwise convolutions
+#         self.numbers = [1, 2, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 24, 26, 30]
+#         self.stages = nn.ModuleList([])
+#         for n in self.numbers:
+#             depthwise_conv = nn.Conv2d(1, 1, kernel_size=(n, 1), padding=0, groups=1)  # Depthwise convolution
+#             pointwise_conv = nn.Conv2d(1, n, kernel_size=(1, n), padding=0)  # Pointwise convolution
+#             self.stages.append(nn.Sequential(
+#                 depthwise_conv,
+#                 pointwise_conv,
+#                 nn.Flatten(1),
+#                 nn.Linear((30-n+1)**2*n, 30*30*embed_size)
+#             ))
+
+#     def forward(self, x):
+#         features = []
+#         for stage in self.stages:
+#             features.append(stage(x).unsqueeze(1))  # (batch, 1, 1, n*n*embed_size)
+#         return torch.stack(features, dim=1)
+
+
 class SelfAttentionBlock(nn.Module):
     def __init__(self, embed_size=1):
         super(SelfAttentionBlock, self).__init__()
