@@ -29,8 +29,6 @@ class PreNorm(nn.Module):
     def forward(self, x):
         return self.fn(self.norm(x))
     
-    
-    
 class Embedding(nn.Module):
     def __init__(self, embed_channel,kernel_size, stride, padding):
         super(Embedding, self).__init__()
@@ -45,13 +43,31 @@ class Embedding(nn.Module):
         x = self.embedding(x)
         return x
     
-class Encoder(nn.Module):
-    def __init__(self, embed_channel):
-        super(Encoder, self).__init__()  # 부모 클래스의 __init__ 메서드 호출
-        self.encoder = nn.TransformerEncoder(d_model=embed_channel, nhead=8)
-        
+class TransformerEncoder(nn.Module):
+    def __init__(self, embed_dim=768, num_heads=12, mlp_dim=3072, dropout=0.1):
+        super().__init__()
+        self.layernorm1 = nn.LayerNorm(embed_dim)
+        self.attention = nn.MultiheadAttention(embed_dim, num_heads, dropout=dropout)
+        self.layernorm2 = nn.LayerNorm(embed_dim)
+        self.mlp = nn.Sequential(
+            nn.Linear(embed_dim, mlp_dim),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(mlp_dim, embed_dim),
+            nn.Dropout(dropout)
+        )
+        self.layernorm3 = nn.LayerNorm(embed_dim)
+
     def forward(self, x):
-        return self.encoder(x)
+        x_norm1 = self.layernorm1(x)
+        attn_output, _ = self.attention(x_norm1, x_norm1, x_norm1)
+        x = x + attn_output
+        x = self.layernorm2(x)
+
+        x_mlp_output = self.mlp(x)
+        x = x + x_mlp_output
+        x = self.layernorm3(x)
+        return x
     
 if __name__ == '__main__':
     device = 'mps' if torch.backends.mps.is_available() else 'cpu'
