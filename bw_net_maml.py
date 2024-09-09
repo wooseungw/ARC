@@ -105,11 +105,11 @@ class BWNet_MAML(nn.Module):
         # out = self.fc_final(out)  # (batch, 11, 30, 30)
         return out
 
-# input_tensor = torch.randn(1, 1, 30, 30)  # 입력 텐서 예시
-# example_input = torch.randn(10, 1, 30, 30)  # 입력 텐서 예시
-# # example_output = torch.randn(10, 1, 30, 30)  # 출력 텐서 예시
+input_tensor = torch.randn(1, 1, 30, 30)  # 입력 텐서 예시
+example_input = torch.randn(10, 1, 30, 30)  # 입력 텐서 예시
+# example_output = torch.randn(10, 1, 30, 30)  # 출력 텐서 예시
 
-# model = BWNet_MAML(embed_size=1)
-# output = model(example_input)
+model = BWNet_MAML(embed_size=1)
+output = model(example_input)
 
-# print(output.shape)  # 최종 출력 크기를 확인
+print(output.shape)  # 최종 출력 크기를 확인
