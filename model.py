@@ -103,55 +103,96 @@ class Head(nn.Module):
     def forward(self, x):
         return self.layers(x)
 ## 디코더
-# Channel Attention Module
-class ChannelAttention(nn.Module):
-    def __init__(self, in_planes, ratio=16):
-        super(ChannelAttention, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.max_pool = nn.AdaptiveMaxPool2d(1)
-
-        # Shared MLP for both max and avg pooling paths
-        self.fc = nn.Sequential(
-            nn.Conv2d(in_planes, in_planes // ratio, 1, bias=False),
-            nn.ReLU(),
-            nn.Conv2d(in_planes // ratio, in_planes, 1, bias=False)
-        )
-        self.sigmoid = nn.Sigmoid()
+class BasicConv(nn.Module):
+    def __init__(self, in_planes, out_planes, kernel_size, stride=1, padding=0, dilation=1, groups=1, relu=True, bn=True, bias=False):
+        super(BasicConv, self).__init__()
+        self.out_channels = out_planes
+        self.conv = nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation, groups=groups, bias=bias)
+        self.bn = nn.BatchNorm2d(out_planes,eps=1e-5, momentum=0.01, affine=True) if bn else None
+        self.relu = nn.ReLU() if relu else None
 
     def forward(self, x):
-        avg_out = self.fc(self.avg_pool(x))
-        max_out = self.fc(self.max_pool(x))
-        out = avg_out + max_out
-        return self.sigmoid(out) * x
-
-# Spatial Attention Module
-class SpatialAttention(nn.Module):
-    def __init__(self, kernel_size=7):
-        super(SpatialAttention, self).__init__()
-        padding = kernel_size // 2
-        self.conv = nn.Conv2d(2, 1, kernel_size=kernel_size, padding=padding, bias=False)
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(self, x):
-        avg_out = torch.mean(x, dim=1, keepdim=True)
-        max_out, _ = torch.max(x, dim=1, keepdim=True)
-        x = torch.cat([avg_out, max_out], dim=1)
         x = self.conv(x)
-        return self.sigmoid(x)
+        if self.bn is not None:
+            x = self.bn(x)
+        if self.relu is not None:
+            x = self.relu(x)
+        return x
 
-# Decoder with Channel and Spatial Attention
-class Decoder(nn.Module):
-    def __init__(self, dim):
-        super(Decoder, self).__init__()
-        self.channel_att = ChannelAttention(dim)
-        self.spatial_att = SpatialAttention()
-
+class Flatten(nn.Module):
     def forward(self, x):
-        x = self.channel_att(x)
-        spatial_attention = self.spatial_att(x)
+        return x.view(x.size(0), -1)
 
-        # Use spatial_attention for final output
-        return spatial_attention
+class ChannelGate(nn.Module):
+    def __init__(self, gate_channels, reduction_ratio=16, pool_types=['avg', 'max']):
+        super(ChannelGate, self).__init__()
+        self.gate_channels = gate_channels
+        self.mlp = nn.Sequential(
+            Flatten(),
+            nn.Linear(gate_channels, gate_channels // reduction_ratio),
+            nn.ReLU(),
+            nn.Linear(gate_channels // reduction_ratio, gate_channels)
+            )
+        self.pool_types = pool_types
+    def forward(self, x):
+        channel_att_sum = None
+        for pool_type in self.pool_types:
+            if pool_type=='avg':
+                avg_pool = F.avg_pool2d( x, (x.size(2), x.size(3)), stride=(x.size(2), x.size(3)))
+                channel_att_raw = self.mlp( avg_pool )
+            elif pool_type=='max':
+                max_pool = F.max_pool2d( x, (x.size(2), x.size(3)), stride=(x.size(2), x.size(3)))
+                channel_att_raw = self.mlp( max_pool )
+            elif pool_type=='lp':
+                lp_pool = F.lp_pool2d( x, 2, (x.size(2), x.size(3)), stride=(x.size(2), x.size(3)))
+                channel_att_raw = self.mlp( lp_pool )
+            elif pool_type=='lse':
+                # LSE pool only
+                lse_pool = logsumexp_2d(x)
+                channel_att_raw = self.mlp( lse_pool )
+
+            if channel_att_sum is None:
+                channel_att_sum = channel_att_raw
+            else:
+                channel_att_sum = channel_att_sum + channel_att_raw
+
+        scale = F.sigmoid( channel_att_sum ).unsqueeze(2).unsqueeze(3).expand_as(x)
+        return x * scale
+
+def logsumexp_2d(tensor):
+    tensor_flatten = tensor.view(tensor.size(0), tensor.size(1), -1)
+    s, _ = torch.max(tensor_flatten, dim=2, keepdim=True)
+    outputs = s + (tensor_flatten - s).exp().sum(dim=2, keepdim=True).log()
+    return outputs
+
+class ChannelPool(nn.Module):
+    def forward(self, x):
+        return torch.cat( (torch.max(x,1)[0].unsqueeze(1), torch.mean(x,1).unsqueeze(1)), dim=1 )
+
+class SpatialGate(nn.Module):
+    def __init__(self):
+        super(SpatialGate, self).__init__()
+        kernel_size = 7
+        self.compress = ChannelPool()
+        self.spatial = BasicConv(2, 1, kernel_size, stride=1, padding=(kernel_size-1) // 2, relu=False)
+    def forward(self, x):
+        x_compress = self.compress(x)
+        x_out = self.spatial(x_compress)
+        scale = F.sigmoid(x_out) # broadcasting
+        return x * scale
+
+class Decoder(nn.Module):
+    def __init__(self, gate_channels, reduction_ratio=16, pool_types=['avg', 'max'], no_spatial=False):
+        super(Decoder, self).__init__()
+        self.ChannelGate = ChannelGate(gate_channels, reduction_ratio, pool_types)
+        self.no_spatial=no_spatial
+        if not no_spatial:
+            self.SpatialGate = SpatialGate()
+    def forward(self, x):
+        x_out = self.ChannelGate(x)
+        if not self.no_spatial:
+            x_out = self.SpatialGate(x_out)
+        return x_out
 
 class ARC_Net(nn.Module):
     def __init__(
@@ -177,8 +218,8 @@ class ARC_Net(nn.Module):
             )
         
         # Decoder를 통해 attention을 적용하여 결합
-        self.decoder = Decoder(dim * len(kernel_stride_padding))  
-        self.head = Head(input_dim=dim * len(kernel_stride_padding) + 1, dim=dim, num_classes=num_classes)
+        self.decoder = Decoder(gate_channels = dim * len(kernel_stride_padding))  
+        self.head = Head(input_dim=dim * len(kernel_stride_padding), dim=dim, num_classes=num_classes)
 
     def forward(self, x):
         all_outputs = []
@@ -191,13 +232,11 @@ class ARC_Net(nn.Module):
 
         # 다양한 커널 크기에서 추출된 특징을 병합
         x = torch.cat(all_outputs, dim=1)
-
+        
         # Decoder를 통해 어텐션 적용 및 결과와 결합
-        ch_sp = self.decoder(x)
-
-        # Decoder의 출력을 원래 x에 concatenate
-        x = torch.cat([ch_sp,x], dim=1)
-
+        x = self.decoder(x)
+        # print("ch_sp:",x.shape)
+        
         # 병합된 특징을 헤드에 전달
         x = self.head(x)
         return x
