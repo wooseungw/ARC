@@ -142,10 +142,10 @@ class ARC_Dataset(Dataset):
         size = len(example_input)
         for i in range(self.example_data_num):
             random_index = random.randint(0, size - 1)
-            example_input.append(self.mapping_input(example_input[random_index]))
-            # example_input.append(example_input[random_index])
-            # example_output.append(example_output[random_index])
-            example_output.append(self.mapping_input(example_output[random_index]))
+            # example_input.append(self.mapping_input(example_input[random_index]))
+            example_input.append(example_input[random_index])
+            example_output.append(example_output[random_index])
+            # example_output.append(self.mapping_input(example_output[random_index]))
         
         task_input = task_input[task_size:]
         task_output = task_output[task_size:]

@@ -37,11 +37,9 @@ class Embedding(nn.Module):
                                    kernel_size=kernel_size, 
                                    stride=stride, 
                                    padding=padding)
-        self.dropout = nn.Dropout(dropout)
         
     def forward(self, x):
-        x = self.embedding(x)
-        return self.dropout(x)
+        return self.embedding(x)
 
 ## 인코더
 class MultiheadAttention(nn.Module):
@@ -49,12 +47,12 @@ class MultiheadAttention(nn.Module):
         super().__init__()
         self.norm = nn.LayerNorm(dim)
         self.attn = nn.MultiheadAttention(dim, num_heads, dropout=dropout, batch_first=True)
-        self.dropout = nn.Dropout(dropout)
+        
     
     def forward(self, x):
         x = self.norm(x)
         x, _ = self.attn(x, x, x)
-        return self.dropout(x)
+        return x
 
     
 class FeedForwardNetwork(nn.Module):
@@ -148,17 +146,9 @@ class Decoder(nn.Module):
         self.channel_att = ChannelAttention(dim)
         self.spatial_att = SpatialAttention()
 
-        # Additional Conv layers for decoding
-        self.conv1 = nn.Conv2d(dim, dim // 2, kernel_size=3, padding=1)
-        self.conv2 = nn.Conv2d(dim // 2, dim // 2, kernel_size=3, padding=1)
-
     def forward(self, x):
         x = self.channel_att(x)
         spatial_attention = self.spatial_att(x)
-
-        # Apply conv layers
-        x = F.relu(self.conv1(x))
-        x = F.relu(self.conv2(x))
 
         # Use spatial_attention for final output
         return spatial_attention
