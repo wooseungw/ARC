@@ -217,8 +217,17 @@ if __name__ == '__main__':
     device = 'mps' if torch.backends.mps.is_available() else 'cpu'
     device = 'cuda' if torch.cuda.is_available() else device
 
-    x = torch.randn(3, 1, 30, 30)
+    x = torch.randn(13, 1, 30, 30)
     x = x.to(device)
-    model = ARC_Net().to(device)
+    model_args = {
+        'dim': 128,
+        'num_heads': 4,
+        'num_layers': 4,
+        'num_classes': 11,
+        'dropout': 0.1,
+        'kernel_stride_padding': ((1, 1, 0), (3, 1, 1))
+    }
+        
+    model = ARC_Net(**model_args).to(device)
     x = model(x)
     print(x.shape)
